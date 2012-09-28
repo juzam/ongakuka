@@ -46,11 +46,11 @@ then
    mDNSbinary=/usr/bin/mDNS
 elif [ -e "/cygdrive/c/Windows/system32/dns-sd" ]
 then
-        # Standard path to CygWIN on Windows
+        # Standard path to Apple's dns-sd on Windows
         mDNSbinary=/cygdrive/c/Windows/system32/dns-sd
 else
-    echo "$0: Fatal: Neither /usr/bin/dns-sd nor /usr/bin/mDNSi nor /cygdrive/c/Windows/system32/dns-sd could be found for Bonjour announcement." >&2
-    exit 127 # Couldn't find a known binary to announce mDSN.
+    echo "$0: Fatal: Neither /usr/bin/dns-sd nor /usr/bin/mDNS nor /cygdrive/c/Windows/system32/dns-sd could be found for Bonjour announcement." >&2
+    exit 127 # Couldn't find a known binary to announce mDNS.
 fi
 
 $mDNSbinary -R "$sshNickname $myhostname" _daap._tcp. . $localMusicPort &
