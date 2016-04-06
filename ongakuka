@@ -8,8 +8,10 @@
 
 highestAvailabelPort=65535
 lowestAvailablePort=1025;
-daapPort=13689
-localMusicPort=$[ ( $RANDOM % ( $[ $highestAvailabelPort - $lowestAvailablePort ] + 1 ) ) + $lowestAvailablePort ]
+daapPort=3689
+
+# connection to use if none is specified
+sshNickname="Ongakuka"
 
 if [ $OSTYPE = "cygwin" ];
 then # Cygwin on Windows
@@ -18,6 +20,22 @@ else # Darwin or other *nix
     myhostname=$(hostname -s)
 fi
 
+# Checking if we got a different connection to use other than the default Ongakuka we use by default.
+# Did we get a parameter as a connection to use
+if [ ! -z "$1" ]
+then
+    if [ "$1" == "Ongakuka" ]
+    then
+        echo "INFO: No need to specify \"$1\" as this is the default we would use anyway." >&2
+        # still using defaults, everything is fine
+    else
+        sshNickname="$1" ; # Overriding SSH nickname
+    fi
+fi
+
+localMusicPort=$[ ( $RANDOM % ( $[ $highestAvailabelPort - $lowestAvailablePort ] + 1 ) ) + $lowestAvailablePort ]
+
+
 echo localMusicPort=$localMusicPort
 
 # -N Do not execute a remote command.  This is useful for just forwarding ports (protocol version 2 only).
@@ -25,10 +43,8 @@ echo localMusicPort=$localMusicPort
 sshOptions="-N -g"
 
 
-# connection to use if none is specified
-sshNickname="Ongakuka"
-
-
+# Replace the localForward IP number here with the internal IP of your daap server
+# unless you directly SSH into that machine.
 ssh -L $localMusicPort:127.0.0.1:$daapPort $sshOptions $sshNickname &
 sshTunnelPID=$!
 echo sshTunnelPID=$sshTunnelPID
@@ -38,11 +54,11 @@ sleep 5
 
 if [ -e "/usr/bin/dns-sd" ]
 then
-    # Standard path to dns-sd on darwin < 12 (before OS X 10.8)
+    # Standard path to dns-sd on darwin < 12 (before OS X 10.8 and again with 10.10 and higher)
     mDNSbinary=/usr/bin/dns-sd
 elif [ -e "/usr/bin/mDNS" ]
 then
-    # Standard path to mDNS on darwin >= 12 (10.8 and higher)
+    # Standard path to mDNS on darwin >= 12 (10.8, 10.9)
    mDNSbinary=/usr/bin/mDNS
 elif [ -e "/cygdrive/c/Windows/system32/dns-sd" ]
 then
@@ -53,10 +69,15 @@ else
     exit 127 # Couldn't find a known binary to announce mDNS.
 fi
 
-$mDNSbinary -R "$sshNickname $myhostname" _daap._tcp. . $localMusicPort &
+# echo $mDNSbinary -R "$sshNickname $myhostname" _daap._tcp. . $localMusicPort
+
+$mDNSbinary -P "$sshNickname $myhostname" _daap._tcp. . $localMusicPort $sshNickname$myhostname.local 127.0.0.1 "Machine Name=$sshNickname$myhostname" &
+
 mDNSPID=$!
 
 sleep 5
+
+netstat -an | grep LISTEN | grep "$localMusicPort"
 
 echo "Ongakuka Music Tunnel established. Happy listening!"
 read -n1 -p "Press any key to shut down the tunnel." anykey
